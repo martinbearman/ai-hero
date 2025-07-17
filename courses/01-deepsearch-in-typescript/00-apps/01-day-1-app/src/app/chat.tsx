@@ -2,6 +2,7 @@
 
 import { useChat } from "@ai-sdk/react";
 import { Loader2 } from "lucide-react";
+import { useState } from "react";
 import { ChatMessage } from "~/components/chat-message";
 import { SignInModal } from "~/components/sign-in-modal";
 
@@ -10,13 +11,25 @@ interface ChatProps {
 }
 
 export const ChatPage = ({ userName }: ChatProps) => {
+  const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
   const {
     messages,
     input,
     handleInputChange,
     handleSubmit,
     isLoading,
-  } = useChat();
+  } = useChat({
+    onError: (error) => {
+      // Show sign in modal if unauthorized
+      if (error.message.includes("401") || error.message.includes("Unauthorized")) {
+        setIsSignInModalOpen(true);
+      }
+    },
+  });
+
+  const handleModalClose = () => {
+    setIsSignInModalOpen(false);
+  };
 
   return (
     <>
@@ -64,7 +77,7 @@ export const ChatPage = ({ userName }: ChatProps) => {
         </div>
       </div>
 
-      <SignInModal isOpen={false} onClose={() => {}} />
+      <SignInModal isOpen={isSignInModalOpen} onClose={handleModalClose} />
     </>
   );
 };
