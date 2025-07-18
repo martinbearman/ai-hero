@@ -46,6 +46,7 @@ export const ChatPage = ({ userName }: ChatProps) => {
                 text={message.content}
                 role={message.role}
                 userName={userName}
+                parts={message.parts}
               />
             );
           })}
