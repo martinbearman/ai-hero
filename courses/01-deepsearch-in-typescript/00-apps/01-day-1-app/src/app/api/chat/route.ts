@@ -1,10 +1,10 @@
 import type { Message } from "ai";
-import { streamText, createDataStreamResponse } from "ai";
+import { streamText, createDataStreamResponse, appendResponseMessages } from "ai";
 import { z } from "zod";
 import { model } from "~/models.ts";
 import { auth } from "~/server/auth";
 import { searchSerper } from "~/serper";
-import { canMakeRequest, createUserRequest } from "~/server/db/queries";
+import { canMakeRequest, createUserRequest, upsertChat } from "~/server/db/queries";
 
 export const maxDuration = 60;
 
@@ -45,15 +45,29 @@ export async function POST(request: Request) {
 
   const body = (await request.json()) as {
     messages: Array<Message>;
+    chatId?: string;
   };
 
   // Record the request
   await createUserRequest(session.user.id);
 
+  // Extract messages and chatId from body
+  const { messages, chatId } = body;
+
+  // Create a new chat ID if one wasn't provided
+  const currentChatId = chatId ?? crypto.randomUUID();
+
+  // Save the initial chat with just the user's message
+  // This ensures we have a record even if the stream fails
+  await upsertChat({
+    userId: session.user.id,
+    chatId: currentChatId,
+    title: messages[messages.length - 1]?.content ?? "New Chat",
+    messages,
+  });
+
   return createDataStreamResponse({
     execute: async (dataStream) => {
-      const { messages } = body;
-
       const result = streamText({
         model,
         messages,
@@ -77,6 +91,24 @@ export async function POST(request: Request) {
               }));
             },
           },
+        },
+        onFinish: async (result) => {
+          // Get the response messages
+          const responseMessages = result.response.messages;
+
+          // Merge the existing messages with the response messages
+          const updatedMessages = appendResponseMessages({
+            messages,
+            responseMessages,
+          });
+
+          // Save the complete chat with all messages
+          await upsertChat({
+            userId: session.user.id,
+            chatId: currentChatId,
+            title: messages[0]?.content ?? "New Chat",
+            messages: updatedMessages,
+          });
         },
       });
 

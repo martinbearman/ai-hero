@@ -95,7 +95,7 @@ export async function upsertChat(opts: {
       messagesList.map((msg, idx) => ({
         chatId,
         role: msg.role,
-        parts: msg.content,
+        parts: msg.parts ?? msg.content, // Try parts first, fall back to content
         order: idx,
       }))
     );
