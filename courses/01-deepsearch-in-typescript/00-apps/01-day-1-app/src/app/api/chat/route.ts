@@ -4,6 +4,7 @@ import { z } from "zod";
 import { model } from "~/models.ts";
 import { auth } from "~/server/auth";
 import { searchSerper } from "~/serper";
+import { canMakeRequest, createUserRequest } from "~/server/db/queries";
 
 export const maxDuration = 60;
 
@@ -36,9 +37,18 @@ export async function POST(request: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
 
+  // Check rate limit
+  const canProceed = await canMakeRequest(session.user.id);
+  if (!canProceed) {
+    return new Response("Too Many Requests - Daily limit exceeded", { status: 429 });
+  }
+
   const body = (await request.json()) as {
     messages: Array<Message>;
   };
+
+  // Record the request
+  await createUserRequest(session.user.id);
 
   return createDataStreamResponse({
     execute: async (dataStream) => {

@@ -18,14 +18,17 @@ export const ChatPage = ({ userName }: ChatProps) => {
     handleInputChange,
     handleSubmit,
     isLoading,
+    error
   } = useChat({
     onError: (error) => {
       // Show sign in modal if unauthorized
       if (error.message.includes("401") || error.message.includes("Unauthorized")) {
         setIsSignInModalOpen(true);
+        console.log(error);
       }
     },
   });
+
 
   const handleModalClose = () => {
     setIsSignInModalOpen(false);
