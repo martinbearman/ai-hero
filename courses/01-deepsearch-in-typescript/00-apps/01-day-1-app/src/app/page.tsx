@@ -3,13 +3,8 @@ import Link from "next/link";
 import { auth } from "~/server/auth";
 import { ChatPage } from "./chat";
 import { AuthButton } from "~/components/auth-button";
-
-const chats = [
-  {
-    id: "1",
-    title: "My First Chat",
-  },
-];
+import { getChats, getChat } from "~/server/db/queries";
+import type { Message } from "ai";
 
 export default async function HomePage({
   searchParams,
@@ -19,6 +14,24 @@ export default async function HomePage({
   const session = await auth();
   const { id: chatId } = await searchParams;
   const isAuthenticated = !!session?.user;
+
+  // Fetch chats if user is authenticated
+  const chats = isAuthenticated && session.user.id 
+    ? await getChats(session.user.id)
+    : [];
+
+  // Fetch current chat if chatId is provided
+  const currentChat = chatId && isAuthenticated && session.user.id
+    ? await getChat(chatId, session.user.id)
+    : null;
+
+  // Map DB messages to AI SDK Message type
+  const initialMessages = currentChat?.messages?.map((msg) => ({
+    id: msg.id,
+    role: msg.role as "user" | "assistant",
+    content: msg.content,
+    parts: msg.parts,
+  }));
 
   return (
     <div className="flex h-screen bg-gray-950">
@@ -71,7 +84,11 @@ export default async function HomePage({
       </div>
 
       {/* Main chat area */}
-      <ChatPage userName={session?.user?.name ?? "Anonymous"} chatId={chatId} />
+      <ChatPage 
+        userName={session?.user?.name ?? "Anonymous"} 
+        chatId={chatId}
+        initialMessages={initialMessages}
+      />
     </div>
   );
 }

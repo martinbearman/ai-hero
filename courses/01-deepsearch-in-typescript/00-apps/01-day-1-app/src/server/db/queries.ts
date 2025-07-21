@@ -122,8 +122,9 @@ export async function getChat(chatId: string, userId: string) {
 
   const chatMessages = await db
     .select({
+      id: messages.id,
       role: messages.role,
-      content: messages.parts,
+      parts: messages.parts,
     })
     .from(messages)
     .where(eq(messages.chatId, chatId))
@@ -131,10 +132,32 @@ export async function getChat(chatId: string, userId: string) {
 
   return {
     ...chat[0],
-    messages: chatMessages.map((msg) => ({
-      role: msg.role,
-      content: msg.content as string,
-    })),
+    messages: chatMessages.map((msg) => {
+      // If parts is a string, use it as content
+      if (typeof msg.parts === "string") {
+        return {
+          id: msg.id,
+          role: msg.role,
+          content: msg.parts,
+        };
+      }
+      // If parts is an array, use the first text part as content
+      if (Array.isArray(msg.parts)) {
+        const textPart = msg.parts.find(part => part.type === "text");
+        return {
+          id: msg.id,
+          role: msg.role,
+          content: textPart?.text || "",
+          parts: msg.parts,
+        };
+      }
+      // Fallback case
+      return {
+        id: msg.id,
+        role: msg.role,
+        content: String(msg.parts),
+      };
+    }),
   };
 }
 
