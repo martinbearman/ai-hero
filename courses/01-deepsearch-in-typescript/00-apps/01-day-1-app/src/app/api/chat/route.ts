@@ -45,7 +45,7 @@ export async function POST(request: Request) {
 
   const body = (await request.json()) as {
     messages: Array<Message>;
-    chatId?: string;
+    chatId?: string; 
   };
 
   // Record the request
@@ -59,12 +59,19 @@ export async function POST(request: Request) {
 
   // Save the initial chat with just the user's message
   // This ensures we have a record even if the stream fails
-  await upsertChat({
-    userId: session.user.id,
-    chatId: currentChatId,
-    title: messages[messages.length - 1]?.content ?? "New Chat",
-    messages,
-  });
+  try {
+    await upsertChat({
+      userId: session.user.id,
+      chatId: currentChatId,
+      title: messages[0]?.content ?? "New Chat", // Using first message consistently for title
+      messages,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Chat exists but belongs to a different user") {
+      return new Response("Unauthorized - Chat belongs to another user", { status: 403 });
+    }
+    throw error; // Re-throw other errors
+  }
 
   return createDataStreamResponse({
     execute: async (dataStream) => {
@@ -103,12 +110,18 @@ export async function POST(request: Request) {
           });
 
           // Save the complete chat with all messages
-          await upsertChat({
-            userId: session.user.id,
-            chatId: currentChatId,
-            title: messages[0]?.content ?? "New Chat",
-            messages: updatedMessages,
-          });
+          try {
+            await upsertChat({
+              userId: session.user.id,
+              chatId: currentChatId,
+              title: messages[0]?.content ?? "New Chat", // Using first message consistently for title
+              messages: updatedMessages,
+            });
+          } catch (error) {
+            console.error("Failed to save chat:", error);
+            // We don't return a response here since we're in a stream
+            // The error will be handled by the onError callback
+          }
         },
       });
 
