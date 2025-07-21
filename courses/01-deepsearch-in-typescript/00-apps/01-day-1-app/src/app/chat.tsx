@@ -5,6 +5,7 @@ import { useChat } from "@ai-sdk/react";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { StickToBottom } from "use-stick-to-bottom";
 import { ChatMessage } from "~/components/chat-message";
 import { SignInModal } from "~/components/sign-in-modal";
 import { isNewChatCreated } from "~/utils";
@@ -56,23 +57,27 @@ export const ChatPage = ({ userName, chatId, isNewChat, initialMessages }: ChatP
   return (
     <>
       <div className="flex flex-1 flex-col">
-        <div
-          className="mx-auto w-full max-w-[65ch] flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-track-gray-800 scrollbar-thumb-gray-600 hover:scrollbar-thumb-gray-500"
+        <StickToBottom 
+          className="overflow-auto mx-auto w-full max-w-[65ch] flex-1 relative [&>div]:scrollbar-thin [&>div]:scrollbar-track-gray-800 [&>div]:scrollbar-thumb-gray-600 [&>div]:hover:scrollbar-thumb-gray-500"
+          resize="smooth"
+          initial="smooth"
           role="log"
           aria-label="Chat messages"
         >
-          {messages.map((message) => {
-            return (
-              <ChatMessage
-                key={message.id}
-                text={message.content}
-                role={message.role}
-                userName={userName}
-                parts={message.parts}
-              />
-            );
-          })}
-        </div>
+          <StickToBottom.Content className="flex flex-col gap-4 p-4">
+            {messages.map((message) => {
+              return (
+                <ChatMessage
+                  key={message.id}
+                  text={message.content}
+                  role={message.role}
+                  userName={userName}
+                  parts={message.parts}
+                />
+              );
+            })}
+          </StickToBottom.Content>
+        </StickToBottom>
 
         <div className="border-t border-gray-700">
           <form
