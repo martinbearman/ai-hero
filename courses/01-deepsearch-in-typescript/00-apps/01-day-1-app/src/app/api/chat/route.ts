@@ -45,24 +45,19 @@ export async function POST(request: Request) {
 
   const body = (await request.json()) as {
     messages: Array<Message>;
-    chatId?: string; 
+    chatId: string;
+    isNewChat: boolean;
   };
 
-  // Record the request
-  await createUserRequest(session.user.id);
-
-  // Extract messages and chatId from body
-  const { messages, chatId } = body;
-
-  // Create a new chat ID if one wasn't provided
-  const currentChatId = chatId ?? crypto.randomUUID();
+  // Extract messages, chatId, and isNewChat from body
+  const { messages, chatId, isNewChat } = body;
 
   // Save the initial chat with just the user's message
   // This ensures we have a record even if the stream fails
   try {
     await upsertChat({
       userId: session.user.id,
-      chatId: currentChatId,
+      chatId,
       title: messages[0]?.content ?? "New Chat", // Using first message consistently for title
       messages,
     });
@@ -76,10 +71,10 @@ export async function POST(request: Request) {
   return createDataStreamResponse({
     execute: async (dataStream) => {
       // If this is a new chat, send the ID to the frontend
-      if (!chatId) {
+      if (isNewChat) {
         dataStream.writeData({
           type: "NEW_CHAT_CREATED",
-          chatId: currentChatId,
+          chatId,
         });
       }
 
@@ -121,7 +116,7 @@ export async function POST(request: Request) {
           try {
             await upsertChat({
               userId: session.user.id,
-              chatId: currentChatId,
+              chatId,
               title: messages[0]?.content ?? "New Chat", // Using first message consistently for title
               messages: updatedMessages,
             });

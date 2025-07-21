@@ -11,11 +11,12 @@ import { isNewChatCreated } from "~/utils";
 
 interface ChatProps {
   userName: string;
-  chatId: string | undefined;
+  chatId: string;
+  isNewChat: boolean;
   initialMessages?: Message[];
 }
 
-export const ChatPage = ({ userName, chatId, initialMessages }: ChatProps) => {
+export const ChatPage = ({ userName, chatId, isNewChat, initialMessages }: ChatProps) => {
   const router = useRouter();
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
   const {
@@ -30,6 +31,7 @@ export const ChatPage = ({ userName, chatId, initialMessages }: ChatProps) => {
     initialMessages,
     body: {
       chatId,
+      isNewChat,
     },
     onError: (error) => {
       // Show sign in modal if unauthorized

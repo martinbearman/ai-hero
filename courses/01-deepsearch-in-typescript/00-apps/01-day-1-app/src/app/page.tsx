@@ -5,6 +5,7 @@ import { ChatPage } from "./chat";
 import { AuthButton } from "~/components/auth-button";
 import { getChats, getChat } from "~/server/db/queries";
 import type { Message } from "ai";
+import { randomUUID } from "crypto";
 
 export default async function HomePage({
   searchParams,
@@ -12,16 +13,20 @@ export default async function HomePage({
   searchParams: Promise<{ id?: string }>;
 }) {
   const session = await auth();
-  const { id: chatId } = await searchParams;
+  const { id: chatIdFromUrl } = await searchParams;
   const isAuthenticated = !!session?.user;
+
+  // Generate a stable chatId for new chats
+  const chatId = chatIdFromUrl ?? randomUUID();
+  const isNewChat = !chatIdFromUrl;
 
   // Fetch chats if user is authenticated
   const chats = isAuthenticated && session.user.id 
     ? await getChats(session.user.id)
     : [];
 
-  // Fetch current chat if chatId is provided
-  const currentChat = chatId && isAuthenticated && session.user.id
+  // Fetch current chat if chatId is provided and it's not a new chat
+  const currentChat = !isNewChat && isAuthenticated && session.user.id
     ? await getChat(chatId, session.user.id)
     : null;
 
@@ -85,8 +90,10 @@ export default async function HomePage({
 
       {/* Main chat area */}
       <ChatPage 
+        key={chatId}
         userName={session?.user?.name ?? "Anonymous"} 
         chatId={chatId}
+        isNewChat={isNewChat}
         initialMessages={initialMessages}
       />
     </div>
