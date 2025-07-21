@@ -1,16 +1,21 @@
 "use client";
 
+import type { Message } from "ai";
 import { useChat } from "@ai-sdk/react";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { ChatMessage } from "~/components/chat-message";
 import { SignInModal } from "~/components/sign-in-modal";
+import { isNewChatCreated } from "~/utils";
 
 interface ChatProps {
   userName: string;
+  chatId: string | undefined;
 }
 
-export const ChatPage = ({ userName }: ChatProps) => {
+export const ChatPage = ({ userName, chatId }: ChatProps) => {
+  const router = useRouter();
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
   const {
     messages,
@@ -18,8 +23,12 @@ export const ChatPage = ({ userName }: ChatProps) => {
     handleInputChange,
     handleSubmit,
     isLoading,
-    error
+    error,
+    data
   } = useChat({
+    body: {
+      chatId,
+    },
     onError: (error) => {
       // Show sign in modal if unauthorized
       if (error.message.includes("401") || error.message.includes("Unauthorized")) {
@@ -29,6 +38,12 @@ export const ChatPage = ({ userName }: ChatProps) => {
     },
   });
 
+  useEffect(() => {
+    const lastDataItem = data?.[data.length - 1];
+    if (lastDataItem && isNewChatCreated(lastDataItem)) {
+      router.push(`?id=${lastDataItem.chatId}`);
+    }
+  }, [data, router]);
 
   const handleModalClose = () => {
     setIsSignInModalOpen(false);
