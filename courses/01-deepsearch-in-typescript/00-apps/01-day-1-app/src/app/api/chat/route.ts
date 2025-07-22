@@ -5,6 +5,12 @@ import { model } from "~/models.ts";
 import { auth } from "~/server/auth";
 import { searchSerper } from "~/serper";
 import { canMakeRequest, createUserRequest, upsertChat } from "~/server/db/queries";
+import { Langfuse } from "langfuse";
+import { env } from "~/env";
+
+const langfuse = new Langfuse({
+  environment: env.NODE_ENV,
+});
 
 export const maxDuration = 60;
 
@@ -52,6 +58,13 @@ export async function POST(request: Request) {
   // Extract messages, chatId, and isNewChat from body
   const { messages, chatId, isNewChat } = body;
 
+  // Create a trace with the chat ID and user information
+  const trace = langfuse.trace({
+    sessionId: chatId,
+    name: "chat",
+    userId: session.user.id,
+  });
+
   // Save the initial chat with just the user's message
   // This ensures we have a record even if the stream fails
   try {
@@ -83,7 +96,13 @@ export async function POST(request: Request) {
         messages,
         maxSteps: 10,
         system: SYSTEM_PROMPT,
-        experimental_telemetry: { isEnabled: true },
+        experimental_telemetry: {
+          isEnabled: true,
+          functionId: "agent",
+          metadata: {
+            langfuseTraceId: trace.id,
+          }, 
+        },
         tools: {
           searchWeb: {
             parameters: z.object({
@@ -121,6 +140,9 @@ export async function POST(request: Request) {
               title: messages[0]?.content ?? "New Chat", // Using first message consistently for title
               messages: updatedMessages,
             });
+            
+            // Flush the trace to Langfuse
+            await langfuse.flushAsync();
           } catch (error) {
             console.error("Failed to save chat:", error);
             // We don't return a response here since we're in a stream
