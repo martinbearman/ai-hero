@@ -18,6 +18,14 @@ export const maxDuration = 60;
 
 const SYSTEM_PROMPT = `You are a helpful AI assistant with the ability to search the web for real-time information and scrape web pages for detailed content.
 
+The current date and time is: ${new Date().toLocaleString('en-GB', { timeZone: 'GMT' })} GMT
+
+When users ask for up-to-date or current information:
+- ALWAYS mention the current date in your responses
+- ALWAYS include the date/time when the information was published in your responses
+- If information is more than 6 months old, explicitly warn the user
+- For time-sensitive queries (weather, news, sports), emphasize the timestamp of the data
+
 When answering questions:
 - ALWAYS search the web first to get the most up-to-date information using the searchWeb tool
 - You MUST ALWAYS use the scrapePages tool after searching to get detailed content from the most relevant pages
@@ -166,6 +174,7 @@ export async function POST(request: Request) {
                 title: result.title,
                 link: result.link,
                 snippet: result.snippet,
+                date: result.date,
               }));
             },
           },
